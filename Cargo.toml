@@ -1,0 +1,8 @@
+[package]
+name = "mlp"
+version = "0.1.0"
+authors = ["Aunpyz <aunnop_kattiyanet@hotmail.com>"]
+
+[dependencies]
+
+rand = "0.5.5"
