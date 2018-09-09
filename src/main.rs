@@ -1,14 +1,14 @@
 extern crate mlp;
 
-use mlp::{Node, NodeType::*};
+use mlp::neuron_network::NeuronNetwork;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 
-fn remove_line(mut f: BufReader<File>, n: i8) -> BufReader<File> {
+fn remove_line(mut f: BufReader<File>, n: u8) -> BufReader<File> {
     let mut str = String::new();
-    for i in 0..n {
+    for _i in 0..n {
         f.read_line(&mut str).expect("can't remove line");
     }
     f
@@ -36,4 +36,6 @@ fn main() {
     f.read_line(&mut contents).expect("file to read line");
     println!("{}", contents);
     let split = contents.split_whitespace();
+    let nn = NeuronNetwork::new(2, 3, 1);
+    println!("{:?}", nn);
 }
