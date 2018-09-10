@@ -36,6 +36,8 @@ fn main() {
     f.read_line(&mut contents).expect("file to read line");
     println!("{}", contents);
     let split = contents.split_whitespace();
-    let nn = NeuronNetwork::new(2, 3, 1);
+    let hidden_layers = vec![5, 4, 3];
+    println!("{:?}", hidden_layers);
+    let nn = NeuronNetwork::new(2, hidden_layers, 1);
     println!("{:?}", nn);
 }
