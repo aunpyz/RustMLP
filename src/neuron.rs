@@ -1,35 +1,28 @@
-use self::NeuronType::Input;
 use super::rand::{self, thread_rng, Rng};
 
-pub enum NeuronType {
-    Input,
-    Output,
-    HiddenLayer,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Neuron {
-    bias: f64,
     next: usize,
     weight: Vec<f64>,
 }
 
 impl Neuron {
-    pub fn new(next: usize, neuron_type: NeuronType) -> Self {
-        let mut weight_init = Vec::with_capacity(next);
+    pub fn new(next: usize) -> Self {
+        let cap = next + 1;
+        let mut weight_init = Vec::with_capacity(cap);
         // weight initialization range
-        let weight_range: f64 = 1.0_f64 / (next as f64).sqrt();
+        let weight_range: f64 = 1.0_f64 / (if next > 0 { next as f64 } else { 1 as f64 }).sqrt();
         let mut rng = thread_rng();
-        for _i in 0..next {
+        for i in 0..cap {
             // assigning weight
-            weight_init.push(rng.gen_range(-weight_range, weight_range));
+            if i == 0 {
+                weight_init.push(1.0_f64);
+            } else {
+                weight_init.push(rng.gen_range(-weight_range, weight_range));
+            }
         }
         Neuron {
-            // not sure about bias initialization
-            bias: match neuron_type {
-                Input => 0 as f64,
-                _ => rand::random::<f64>(),
-            },
+            // bias as a part of weights
             next: next,
             weight: weight_init,
         }

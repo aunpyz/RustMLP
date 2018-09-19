@@ -1,8 +1,10 @@
 // fully connected neuron network
-use super::neuron::{Neuron, NeuronType::*};
+use super::neuron::Neuron;
 use super::rand::{thread_rng, Rng};
 
-#[derive(Debug)]
+mod function;
+
+#[derive(Debug, Clone)]
 pub struct NeuronNetwork {
     input: Vec<Neuron>,
     hidden_layer: Vec<Vec<Neuron>>,
@@ -24,17 +26,17 @@ impl NeuronNetwork {
         let mut output_neuron: Vec<Neuron> = Vec::with_capacity(output);
 
         for _i in 0..input {
-            input_neuron.push(Neuron::new(hidden_layer[0], Input));
+            input_neuron.push(Neuron::new(hidden_layer[0]));
         }
         for i in 0..layers {
             let mut hidden_neuron: Vec<Neuron> = Vec::with_capacity(hidden_layer[i]);
             for _j in 0..hidden_layer[i] {
-                hidden_neuron.push(Neuron::new(hidden_layer[i + 1], HiddenLayer));
+                hidden_neuron.push(Neuron::new(hidden_layer[i + 1]));
             }
             hidden_layer_neuron.push(hidden_neuron);
         }
         for _i in 0..output {
-            output_neuron.push(Neuron::new(0, Output));
+            output_neuron.push(Neuron::new(0));
         }
 
         NeuronNetwork {
@@ -42,5 +44,29 @@ impl NeuronNetwork {
             hidden_layer: hidden_layer_neuron,
             output: output_neuron,
         }
+    }
+
+    pub fn forward_pass(&self, data: String, input_neuron: usize) {
+        // data string with n-input, others are desire output
+        let split = data.split_whitespace();
+        let f_data = split.collect::<Vec<&str>>();
+        let f_data = function::normalize(f_data);
+        println!("{:?}", f_data);
+        // for i in 0..f_data.len() {
+        //     println!("{}", f_data[i]);
+        // }
+        // for i in 0..self.hidden_layer.len() {
+        //     println!("{} layer", i);
+        //     for j in 0..self.hidden_layer[i].len() {
+        //         println!("{:?}", self.hidden_layer[i][j]);
+        //     }
+        // }
+        // for (i, input) in split.enumerate() {
+        //     if i == input_neuron {
+        //         println!("{}", input);
+        //     } else {
+        //         println!("input data {}", input);
+        //     }
+        // }
     }
 }
