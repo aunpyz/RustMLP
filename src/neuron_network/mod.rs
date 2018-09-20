@@ -2,6 +2,10 @@
 use super::neuron::Neuron;
 use super::rand::{thread_rng, Rng};
 
+use std::borrow::ToOwned;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
 mod function;
 
 #[derive(Debug, Clone)]
@@ -13,7 +17,7 @@ pub struct NeuronNetwork {
 
 impl NeuronNetwork {
     // input is number of input(s)
-    // hidden_layer is number of neurons in eachhidden layer
+    // hidden_layer is number of neurons in each hidden layer
     // output is number of output(s)
     pub fn new(input: usize, mut hidden_layer: Vec<usize>, output: usize) -> NeuronNetwork {
         let layers = hidden_layer.len();
@@ -48,10 +52,6 @@ impl NeuronNetwork {
 
     pub fn forward_pass(&self, data: String, input_neuron: usize) {
         // data string with n-input, others are desire output
-        let split = data.split_whitespace();
-        let f_data = split.collect::<Vec<&str>>();
-        let f_data = function::normalize(f_data);
-        println!("{:?}", f_data);
         // for i in 0..f_data.len() {
         //     println!("{}", f_data[i]);
         // }
@@ -68,5 +68,19 @@ impl NeuronNetwork {
         //         println!("input data {}", input);
         //     }
         // }
+    }
+
+    pub fn cross_validation(&self, mut file: BufReader<File>, input_neuron: usize) {
+        let mut input_data = Vec::<Vec<f64>>::new();
+        let mut all_data = Vec::<f64>::new();
+        for line in file.lines() {
+            let line = line.unwrap();
+            let split = line.split_whitespace().collect::<Vec<&str>>();
+            let mut vec = function::to_f64_vec(split);
+            // vec clone will be consumed after push
+            input_data.push(vec.clone());
+            all_data.append(&mut vec);
+        }
+        let normalized_data = function::normalize(all_data, input_data);
     }
 }

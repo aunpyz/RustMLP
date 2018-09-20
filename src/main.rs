@@ -38,10 +38,11 @@ fn main() {
         let split = contents.split_whitespace();
         // split goes out of scope, no longer borrow contents
     }
-    println!("{}", contents);
+    // println!("{}", contents);
     let hidden_layers = vec![3, 2];
     let nn = NeuronNetwork::new(8, hidden_layers, 2);
-    nn.forward_pass(contents, 8);
+    // nn.forward_pass(contents, 8);
+    nn.cross_validation(f, 8);
 }
 
 fn print_split(split: std::str::SplitWhitespace) {

@@ -1,43 +1,52 @@
+use rand::{self, Rng};
+
 #[derive(Debug)]
 pub struct MinMax {
     min: f64,
     max: f64,
-    f_data: Vec<f64>,
+    f_data: Vec<Vec<f64>>,
 }
 
-pub fn normalize(data: Vec<&str>) -> MinMax {
-    let min_max = min_max(data);
-    let mut f_data_normalized = min_max.f_data;
-    let divisor = min_max.max - min_max.min;
-    let min = min_max.min;
-    for i in 0..f_data_normalized.len() {
-        f_data_normalized[i] = (f_data_normalized[i] - min) / divisor;
+pub fn to_f64_vec(vec: Vec<&str>) -> Vec<f64> {
+    let mut f64_vec: Vec<f64> = Vec::new();
+    for item in vec {
+        f64_vec.push(item.parse::<f64>().unwrap())
     }
+    f64_vec
+}
+
+pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
+    let min_max = min_max(all_data);
+    let mut f_data_normalized = input_data;
+    let divisor = min_max.1 - min_max.0;
+    let min = min_max.0;
+    for i in 0..f_data_normalized.len() {
+        for j in 0..f_data_normalized[i].len() {
+            f_data_normalized[i][j] = (f_data_normalized[i][j] - min) / divisor;
+        }
+    }
+    // shuffle data
+    rand::thread_rng().shuffle(&mut f_data_normalized);
     MinMax {
         f_data: f_data_normalized,
-        ..min_max
+        min: min_max.0,
+        max: min_max.1,
     }
 }
 
-fn min_max(data: Vec<&str>) -> MinMax {
+// (min, max) pair returned
+fn min_max(data: Vec<f64>) -> (f64, f64) {
     let len = data.len();
     let mut min: f64;
     let mut max: f64;
-    let mut f_data: Vec<f64> = Vec::with_capacity(len);
     if len < 2 {
         // less than 2 element in vector
-        MinMax {
-            min: 0_f64,
-            max: 0_f64,
-            f_data: vec![0_f64],
-        }
+        (0_f64, 0_f64)
     } else {
         // init min & max
         {
-            let d0 = data[0].parse::<f64>().unwrap();
-            let d1 = data[1].parse::<f64>().unwrap();
-            f_data.push(d0);
-            f_data.push(d1);
+            let d0 = data[0];
+            let d1 = data[1];
             if d0 > d1 {
                 max = d0;
                 min = d1;
@@ -50,10 +59,8 @@ fn min_max(data: Vec<&str>) -> MinMax {
         let mut index = 2;
         if len % 2 == 1 {
             while index + 1 < len {
-                let d0 = data[index].parse::<f64>().unwrap();
-                let d1 = data[index + 1].parse::<f64>().unwrap();
-                f_data.push(d0);
-                f_data.push(d1);
+                let d0 = data[index];
+                let d1 = data[index + 1];
                 if d0 > d1 {
                     if d0 > max {
                         max = d0;
@@ -71,8 +78,7 @@ fn min_max(data: Vec<&str>) -> MinMax {
                 }
                 index += 2;
             }
-            let dn = data[index].parse::<f64>().unwrap();
-            f_data.push(dn);
+            let dn = data[index];
             if dn > max {
                 max = dn;
             } else if dn < min {
@@ -80,10 +86,8 @@ fn min_max(data: Vec<&str>) -> MinMax {
             }
         } else {
             while index < len {
-                let d0 = data[index].parse::<f64>().unwrap();
-                let d1 = data[index + 1].parse::<f64>().unwrap();
-                f_data.push(d0);
-                f_data.push(d1);
+                let d0 = data[index];
+                let d1 = data[index + 1];
                 if d0 > d1 {
                     if d0 > max {
                         max = d0;
@@ -102,6 +106,6 @@ fn min_max(data: Vec<&str>) -> MinMax {
                 index += 2;
             }
         }
-        MinMax { min, max, f_data }
+        (min, max)
     }
 }
