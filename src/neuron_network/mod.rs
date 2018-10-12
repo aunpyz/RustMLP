@@ -2,7 +2,6 @@
 use super::neuron::Neuron;
 use super::rand::{thread_rng, Rng};
 
-use std::borrow::ToOwned;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -69,18 +68,33 @@ impl NeuronNetwork {
         //     }
         // }
     }
+}
 
-    pub fn cross_validation(&self, mut file: BufReader<File>, input_neuron: usize) {
-        let mut input_data = Vec::<Vec<f64>>::new();
-        let mut all_data = Vec::<f64>::new();
-        for line in file.lines() {
-            let line = line.unwrap();
-            let split = line.split_whitespace().collect::<Vec<&str>>();
-            let mut vec = function::to_f64_vec(split);
-            // vec clone will be consumed after push
-            input_data.push(vec.clone());
-            all_data.append(&mut vec);
-        }
-        let normalized_data = function::normalize(all_data, input_data);
+pub fn cross_validation(
+    mut neuron_network: NeuronNetwork,
+    file: BufReader<File>,
+    validate_section: usize,
+) {
+    let input_neuron = neuron_network.input.len();
+    let output_neuron = neuron_network.output.len();
+
+    let mut input_data = Vec::<Vec<f64>>::new();
+    let mut all_data = Vec::<f64>::new();
+    for line in file.lines() {
+        let line = line.unwrap();
+        let split = line.split_whitespace().collect::<Vec<&str>>();
+        let mut vec = function::to_f64_vec(split);
+        // vec clone will be consumed after push
+        input_data.push(vec.clone());
+        all_data.append(&mut vec);
+    }
+    let normalized_data = function::normalize(all_data, input_data);
+    let min_max = (normalized_data.min, normalized_data.max);
+
+    let section = function::split_section(normalized_data, validate_section);
+    // normalized_data will no longer available
+
+    for (i, item) in section.iter().enumerate() {
+        println!("{} {}", i, item.len());
     }
 }

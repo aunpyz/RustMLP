@@ -1,6 +1,6 @@
 extern crate mlp;
 
-use mlp::neuron_network::NeuronNetwork;
+use mlp::neuron_network::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -22,7 +22,6 @@ fn main() {
     let f = File::open(filename).expect("file not found");
     let mut f = BufReader::new(f);
 
-    let mut contents = String::new();
     // f.read_to_string(&mut contents)
     //     .expect("something went wrong reading the file");
 
@@ -33,16 +32,9 @@ fn main() {
 
     f = remove_line(f, 2);
 
-    f.read_line(&mut contents).expect("file to read line");
-    {
-        let split = contents.split_whitespace();
-        // split goes out of scope, no longer borrow contents
-    }
-    // println!("{}", contents);
     let hidden_layers = vec![3, 2];
-    let nn = NeuronNetwork::new(8, hidden_layers, 2);
-    // nn.forward_pass(contents, 8);
-    nn.cross_validation(f, 8);
+    let nn = NeuronNetwork::new(8, hidden_layers, 1);
+    cross_validation(nn, f, 10);
 }
 
 fn print_split(split: std::str::SplitWhitespace) {

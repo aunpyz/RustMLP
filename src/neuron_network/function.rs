@@ -2,9 +2,9 @@ use rand::{self, Rng};
 
 #[derive(Debug)]
 pub struct MinMax {
-    min: f64,
-    max: f64,
-    f_data: Vec<Vec<f64>>,
+    pub min: f64,
+    pub max: f64,
+    pub f_data: Vec<Vec<f64>>,
 }
 
 pub fn to_f64_vec(vec: Vec<&str>) -> Vec<f64> {
@@ -32,6 +32,27 @@ pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
         min: min_max.0,
         max: min_max.1,
     }
+}
+
+pub fn sigmoid(t: f64) -> f64 {
+    1_f64 / (1_f64 + (-t).exp())
+}
+
+pub fn split_section(data: MinMax, s: usize) -> Vec<Vec<Vec<f64>>> {
+    let len = data.f_data.len();
+    println!("{}", len);
+    let n = len / s;
+    let mut split_data: Vec<Vec<Vec<f64>>> = Vec::new();
+    for i in 0..s {
+        // range slice start..end, from start to, not including, end
+        if i == s - 1 {
+            // last data chunk
+            split_data.push(data.f_data[i * n..len].to_vec());
+        } else {
+            split_data.push(data.f_data[i * n..(i + 1) * n].to_vec());
+        }
+    }
+    split_data
 }
 
 // (min, max) pair returned
