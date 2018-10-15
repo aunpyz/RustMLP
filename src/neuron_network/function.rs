@@ -40,7 +40,6 @@ pub fn sigmoid(t: f64) -> f64 {
 
 pub fn split_section(data: MinMax, s: usize) -> Vec<Vec<Vec<f64>>> {
     let len = data.f_data.len();
-    println!("{}", len);
     let n = len / s;
     let mut split_data: Vec<Vec<Vec<f64>>> = Vec::new();
     for i in 0..s {

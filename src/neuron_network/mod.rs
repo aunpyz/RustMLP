@@ -49,34 +49,102 @@ impl NeuronNetwork {
         }
     }
 
-    pub fn forward_pass(&self, data: String, input_neuron: usize) {
-        // data string with n-input, others are desire output
-        // for i in 0..f_data.len() {
-        //     println!("{}", f_data[i]);
-        // }
-        // for i in 0..self.hidden_layer.len() {
-        //     println!("{} layer", i);
-        //     for j in 0..self.hidden_layer[i].len() {
-        //         println!("{:?}", self.hidden_layer[i][j]);
-        //     }
-        // }
-        // for (i, input) in split.enumerate() {
-        //     if i == input_neuron {
-        //         println!("{}", input);
-        //     } else {
-        //         println!("input data {}", input);
-        //     }
-        // }
+    fn forward_pass(
+        &self,
+        data_section: &Vec<Vec<Vec<f64>>>,
+        (input, hidden_layer, output): (usize, usize, usize),
+    ) {
+        let n = data_section.len();
+        for i in 0..n {
+            for j in 0..n {
+                // ignore index i
+                if j == i {
+                    continue;
+                }
+                let data = &data_section[j];
+                // iterate through line of normalized raw data
+                for (_index, item) in data.iter().enumerate() {
+                    let mut layer = 0;
+
+                    let mut errors: Vec<f64> = Vec::with_capacity(output);
+                    // output for hidden layer nodes and output nodes
+                    let mut output_nodes: Vec<Vec<f64>> = Vec::with_capacity(hidden_layer + 1);
+
+                    {
+                        // input layer feed to hidden layer
+                        let next_layer_node = self.input[0].next;
+                        let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
+
+                        for k in 0..next_layer_node {
+                            output.push(self.hidden_layer[0][k].weight[0]);
+                        }
+                        for k in 0..next_layer_node {
+                            for n in 0..input {
+                                output[k] += self.input[n].weight[k + 1] * item[n];
+                            }
+                        }
+                        for k in 0..next_layer_node {
+                            output[k] = function::sigmoid(output[k]);
+                        }
+
+                        output_nodes.push(output);
+                    }
+
+                    {
+                        // hidden layers feed to output layer
+                        for k in 0..hidden_layer {
+                            let input_node = output_nodes[layer].len();
+                            let next_layer_node = self.hidden_layer[k][0].next;
+                            let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
+
+                            if k + 1 >= hidden_layer {
+                                // last hidden layer's layer connected to output layer
+                                for l in 0..next_layer_node {
+                                    output.push(self.output[l].weight[0]);
+                                }
+                            } else {
+                                for l in 0..next_layer_node {
+                                    output.push(self.hidden_layer[k + 1][l].weight[0]);
+                                }
+                            }
+                            for l in 0..next_layer_node {
+                                for n in 0..input_node {
+                                    output[l] += self.hidden_layer[k][n].weight[l + 1]
+                                        * output_nodes[layer][n];
+                                }
+                            }
+                            for l in 0..next_layer_node {
+                                output[l] = function::sigmoid(output[l]);
+                            }
+
+                            output_nodes.push(output);
+                            // go to next layer
+                            layer += 1;
+                        }
+                    }
+
+                    {
+                        // output layer
+                        let output_layer_node = output_nodes.pop().unwrap();
+                        for k in 0..output {
+                            let error = item[input + k] - output_layer_node[k];
+                            errors.push(error);
+                        }
+                    }
+                    println!("{:?}", errors);
+                }
+            }
+        }
     }
 }
 
 pub fn cross_validation(
-    mut neuron_network: NeuronNetwork,
+    (input, hidden_layer, output): (usize, Vec<usize>, usize),
     file: BufReader<File>,
     validate_section: usize,
 ) {
-    let input_neuron = neuron_network.input.len();
-    let output_neuron = neuron_network.output.len();
+    let n_hidden_layer = hidden_layer.len();
+    let mut nn = NeuronNetwork::new(input, hidden_layer, output);
 
     let mut input_data = Vec::<Vec<f64>>::new();
     let mut all_data = Vec::<f64>::new();
@@ -89,12 +157,91 @@ pub fn cross_validation(
         all_data.append(&mut vec);
     }
     let normalized_data = function::normalize(all_data, input_data);
-    let min_max = (normalized_data.min, normalized_data.max);
+    let (min, max) = (normalized_data.min, normalized_data.max);
 
     let section = function::split_section(normalized_data, validate_section);
+    // let n = section.len();
     // normalized_data will no longer available
 
-    for (i, item) in section.iter().enumerate() {
-        println!("{} {}", i, item.len());
-    }
+    nn.forward_pass(&section, (input, n_hidden_layer, output));
+
+    // for i in 0..n {
+    //     for j in 0..n {
+    //         // ignore index i
+    //         if j == i {
+    //             continue;
+    //         }
+    //         let data = &section[j];
+    //         // iterate through line of normalized raw data
+    //         for (_index, item) in data.iter().enumerate() {
+    //             let mut layer = 0;
+
+    //             let mut errors: Vec<f64> = Vec::with_capacity(output);
+    //             // output for hidden layer nodes and output nodes
+    //             let mut output_nodes: Vec<Vec<f64>> = Vec::with_capacity(n_hidden_layer + 1);
+
+    //             {
+    //                 // input layer feed to hidden layer
+    //                 let next_layer_node = nn.input[0].next;
+    //                 let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
+
+    //                 for k in 0..next_layer_node {
+    //                     output.push(nn.hidden_layer[0][k].weight[0]);
+    //                 }
+    //                 for k in 0..next_layer_node {
+    //                     for n in 0..input {
+    //                         output[k] += nn.input[n].weight[k + 1] * item[n];
+    //                     }
+    //                 }
+    //                 for k in 0..next_layer_node {
+    //                     output[k] = function::sigmoid(output[k]);
+    //                 }
+
+    //                 output_nodes.push(output);
+    //             }
+
+    //             {
+    //                 // hidden layers feed to output layer
+    //                 for k in 0..n_hidden_layer {
+    //                     let input_node = output_nodes[layer].len();
+    //                     let next_layer_node = nn.hidden_layer[k][0].next;
+    //                     let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
+
+    //                     if k + 1 >= n_hidden_layer {
+    //                         // last hidden layer's layer connected to output layer
+    //                         for l in 0..next_layer_node {
+    //                             output.push(nn.output[l].weight[0]);
+    //                         }
+    //                     } else {
+    //                         for l in 0..next_layer_node {
+    //                             output.push(nn.hidden_layer[k + 1][l].weight[0]);
+    //                         }
+    //                     }
+    //                     for l in 0..next_layer_node {
+    //                         for n in 0..input_node {
+    //                             output[l] +=
+    //                                 nn.hidden_layer[k][n].weight[l + 1] * output_nodes[layer][n];
+    //                         }
+    //                     }
+    //                     for l in 0..next_layer_node {
+    //                         output[l] = function::sigmoid(output[l]);
+    //                     }
+
+    //                     output_nodes.push(output);
+    //                     // go to next layer
+    //                     layer += 1;
+    //                 }
+    //             }
+
+    //             {
+    //                 // output layer
+    //                 let output_layer_node = output_nodes.pop().unwrap();
+    //                 for k in 0..output {
+    //                     let error = item[input + k] - output_layer_node[k];
+    //                     errors.push(error);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }

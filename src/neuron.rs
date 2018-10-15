@@ -2,8 +2,8 @@ use super::rand::{self, thread_rng, Rng};
 
 #[derive(Debug, Clone)]
 pub struct Neuron {
-    next: usize,
-    weight: Vec<f64>,
+    pub next: usize,
+    pub weight: Vec<f64>,
 }
 
 impl Neuron {
