@@ -12,13 +12,16 @@ pub struct NeuronNetwork {
     input: Vec<Neuron>,
     hidden_layer: Vec<Vec<Neuron>>,
     output: Vec<Neuron>,
+    learning_rate: f64,
+    momentum_rate: f64,
 }
 
 impl NeuronNetwork {
     // input is number of input(s)
     // hidden_layer is number of neurons in each hidden layer
     // output is number of output(s)
-    pub fn new(input: usize, mut hidden_layer: Vec<usize>, output: usize) -> NeuronNetwork {
+    fn new(input: usize, mut hidden_layer: Vec<usize>, output: usize) -> Self {
+        let mut rng = thread_rng();
         let layers = hidden_layer.len();
 
         // last one for output neuron connections
@@ -46,16 +49,51 @@ impl NeuronNetwork {
             input: input_neuron,
             hidden_layer: hidden_layer_neuron,
             output: output_neuron,
+            learning_rate: rng.gen_range(0.1, 1_f64),
+            momentum_rate: rng.gen_range(0.1, 1_f64),
+        }
+    }
+
+    fn empty(input: usize, mut hidden_layer: Vec<usize>, output: usize) -> Self {
+        let layers = hidden_layer.len();
+        hidden_layer.push(output);
+
+        let mut input_neuron: Vec<Neuron> = Vec::with_capacity(input);
+        let mut hidden_layer_neuron: Vec<Vec<Neuron>> = Vec::with_capacity(layers);
+        let mut output_neuron: Vec<Neuron> = Vec::with_capacity(output);
+
+        for _i in 0..input {
+            input_neuron.push(Neuron::empty(hidden_layer[0]));
+        }
+        for i in 0..layers {
+            let mut hidden_neuron: Vec<Neuron> = Vec::with_capacity(hidden_layer[i]);
+            for _j in 0..hidden_layer[i] {
+                hidden_neuron.push(Neuron::empty(hidden_layer[i + 1]));
+            }
+            hidden_layer_neuron.push(hidden_neuron);
+        }
+        for _i in 0..output {
+            output_neuron.push(Neuron::empty(0));
+        }
+
+        NeuronNetwork {
+            input: input_neuron,
+            hidden_layer: hidden_layer_neuron,
+            output: output_neuron,
+            learning_rate: 0_f64,
+            momentum_rate: 0_f64,
         }
     }
 
     fn forward_pass(
-        &self,
+        &mut self,
         data_section: &Vec<Vec<Vec<f64>>>,
-        (input, hidden_layer, output): (usize, usize, usize),
+        (input, hidden_layer, output): (usize, Vec<usize>, usize),
     ) {
         let n = data_section.len();
         for i in 0..n {
+            let mut prev_nn = NeuronNetwork::empty(input, hidden_layer.clone(), output);
+            let hidden_layer = hidden_layer.len();
             for j in 0..n {
                 // ignore index i
                 if j == i {
@@ -83,9 +121,6 @@ impl NeuronNetwork {
                                 output[k] += self.input[n].weight[k + 1] * item[n];
                             }
                         }
-                        for k in 0..next_layer_node {
-                            output[k] = function::sigmoid(output[k]);
-                        }
 
                         output_nodes.push(output);
                     }
@@ -110,11 +145,8 @@ impl NeuronNetwork {
                             for l in 0..next_layer_node {
                                 for n in 0..input_node {
                                     output[l] += self.hidden_layer[k][n].weight[l + 1]
-                                        * output_nodes[layer][n];
+                                        * function::sigmoid(output_nodes[layer][n]);
                                 }
-                            }
-                            for l in 0..next_layer_node {
-                                output[l] = function::sigmoid(output[l]);
                             }
 
                             output_nodes.push(output);
@@ -125,16 +157,131 @@ impl NeuronNetwork {
 
                     {
                         // output layer
-                        let output_layer_node = output_nodes.pop().unwrap();
+                        let output_layer_node = output_nodes.last().unwrap();
                         for k in 0..output {
-                            let error = item[input + k] - output_layer_node[k];
+                            let error = item[input + k] - function::sigmoid(output_layer_node[k]);
                             errors.push(error);
                         }
                     }
-                    println!("{:?}", errors);
+                    prev_nn =
+                        self.backward_pass(output_nodes, errors, prev_nn, item[0..input].to_vec());
                 }
             }
         }
+    }
+
+    fn backward_pass(
+        &mut self,
+        output_nodes: Vec<Vec<f64>>,
+        errors: Vec<f64>,
+        prev_neuron_netowrk: NeuronNetwork,
+        input: Vec<f64>,
+    ) -> Self {
+        let prev_nn = self.clone();
+        let mut gradients: Vec<Vec<f64>> = Vec::new();
+        for (i, output) in output_nodes.iter().rev().enumerate() {
+            let mut gradient: Vec<f64> = Vec::new();
+            if i == 0 {
+                // output
+                for j in 0..output.len() {
+                    gradient.push(errors[j] * function::d_sigmoid(output[j]));
+                }
+            } else {
+                // hidden layer
+                for j in 0..output.len() {
+                    let mut sum_gradient: f64 = 0_f64;
+                    for k in 0..gradients[i - 1].len() {
+                        sum_gradient += gradients[i - 1][k];
+                    }
+                    gradient.push(function::d_sigmoid(output[j]) * sum_gradient);
+                }
+            }
+            gradients.push(gradient);
+        }
+
+        // adjust weight
+        {
+            let mut layer = 0;
+            gradients.reverse();
+            {
+                // input
+                let input_next_layer = self.input[0].next;
+                for i in 0..input_next_layer {
+                    let bias = self.hidden_layer[0][i].weight[0];
+                    self.hidden_layer[0][i].weight[0] = bias
+                        + (self.momentum_rate
+                            * (bias - prev_neuron_netowrk.hidden_layer[0][i].weight[0])
+                            + self.learning_rate * gradients[layer][i] * 1_f64);
+                }
+                for i in 0..input_next_layer {
+                    for j in 0..input.len() {
+                        let weight = self.input[j].weight[i + 1];
+                        self.input[j].weight[i + 1] = weight
+                            + (self.momentum_rate
+                                * (weight - prev_neuron_netowrk.input[j].weight[i + 1])
+                                + self.learning_rate * gradients[layer][i] * input[j]);
+                    }
+                }
+                layer += 1;
+            }
+            {
+                // hidden layer
+                let hidden_layer = self.hidden_layer.len();
+                for i in 0..hidden_layer {
+                    let input_next_layer = self.hidden_layer[i][0].next;
+
+                    if i + 1 >= hidden_layer {
+                        // node(s) connected to output node(s)
+                        for j in 0..input_next_layer {
+                            let bias = self.output[j].weight[0];
+                            self.output[j].weight[0] = bias
+                                + (self.momentum_rate
+                                    * (bias - prev_neuron_netowrk.output[j].weight[0])
+                                    + self.learning_rate * gradients[layer][j] * 1_f64);
+                        }
+                        for j in 0..input_next_layer {
+                            for k in 0..self.hidden_layer[i].len() {
+                                let weight = self.hidden_layer[i][k].weight[j + 1];
+                                self.hidden_layer[i][k].weight[j + 1] = weight
+                                    + (self.momentum_rate
+                                        * (weight
+                                            - prev_neuron_netowrk.hidden_layer[i][k].weight
+                                                [j + 1])
+                                        + self.learning_rate
+                                            * gradients[layer][j]
+                                            * output_nodes[layer - 1][k]);
+                            }
+                        }
+                    } else {
+                        for j in 0..input_next_layer {
+                            let bias = self.hidden_layer[i + 1][j].weight[0];
+                            self.hidden_layer[i + 1][j].weight[0] = bias
+                                + (self.momentum_rate
+                                    * (bias
+                                        - prev_neuron_netowrk.hidden_layer[i + 1][j].weight[0])
+                                    + self.learning_rate * gradients[layer][j] * 1_f64);
+                        }
+                        for j in 0..input_next_layer {
+                            for k in 0..self.hidden_layer[i].len() {
+                                let weight = self.hidden_layer[i][k].weight[j + 1];
+                                self.hidden_layer[i][k].weight[j + 1] = weight
+                                    + (self.momentum_rate
+                                        * (weight
+                                            - prev_neuron_netowrk.hidden_layer[i][k].weight
+                                                [j + 1])
+                                        + self.learning_rate
+                                            * gradients[layer][j]
+                                            * output_nodes[layer - 1][k]);
+                            }
+                        }
+                    }
+                    layer += 1;
+                }
+            }
+        }
+
+        // send previous NeuronNetwork back
+        prev_nn
     }
 }
 
@@ -142,9 +289,9 @@ pub fn cross_validation(
     (input, hidden_layer, output): (usize, Vec<usize>, usize),
     file: BufReader<File>,
     validate_section: usize,
+    epoch: usize,
 ) {
-    let n_hidden_layer = hidden_layer.len();
-    let mut nn = NeuronNetwork::new(input, hidden_layer, output);
+    let mut nn = NeuronNetwork::new(input, hidden_layer.clone(), output);
 
     let mut input_data = Vec::<Vec<f64>>::new();
     let mut all_data = Vec::<f64>::new();
@@ -163,85 +310,5 @@ pub fn cross_validation(
     // let n = section.len();
     // normalized_data will no longer available
 
-    nn.forward_pass(&section, (input, n_hidden_layer, output));
-
-    // for i in 0..n {
-    //     for j in 0..n {
-    //         // ignore index i
-    //         if j == i {
-    //             continue;
-    //         }
-    //         let data = &section[j];
-    //         // iterate through line of normalized raw data
-    //         for (_index, item) in data.iter().enumerate() {
-    //             let mut layer = 0;
-
-    //             let mut errors: Vec<f64> = Vec::with_capacity(output);
-    //             // output for hidden layer nodes and output nodes
-    //             let mut output_nodes: Vec<Vec<f64>> = Vec::with_capacity(n_hidden_layer + 1);
-
-    //             {
-    //                 // input layer feed to hidden layer
-    //                 let next_layer_node = nn.input[0].next;
-    //                 let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
-
-    //                 for k in 0..next_layer_node {
-    //                     output.push(nn.hidden_layer[0][k].weight[0]);
-    //                 }
-    //                 for k in 0..next_layer_node {
-    //                     for n in 0..input {
-    //                         output[k] += nn.input[n].weight[k + 1] * item[n];
-    //                     }
-    //                 }
-    //                 for k in 0..next_layer_node {
-    //                     output[k] = function::sigmoid(output[k]);
-    //                 }
-
-    //                 output_nodes.push(output);
-    //             }
-
-    //             {
-    //                 // hidden layers feed to output layer
-    //                 for k in 0..n_hidden_layer {
-    //                     let input_node = output_nodes[layer].len();
-    //                     let next_layer_node = nn.hidden_layer[k][0].next;
-    //                     let mut output: Vec<f64> = Vec::with_capacity(next_layer_node);
-
-    //                     if k + 1 >= n_hidden_layer {
-    //                         // last hidden layer's layer connected to output layer
-    //                         for l in 0..next_layer_node {
-    //                             output.push(nn.output[l].weight[0]);
-    //                         }
-    //                     } else {
-    //                         for l in 0..next_layer_node {
-    //                             output.push(nn.hidden_layer[k + 1][l].weight[0]);
-    //                         }
-    //                     }
-    //                     for l in 0..next_layer_node {
-    //                         for n in 0..input_node {
-    //                             output[l] +=
-    //                                 nn.hidden_layer[k][n].weight[l + 1] * output_nodes[layer][n];
-    //                         }
-    //                     }
-    //                     for l in 0..next_layer_node {
-    //                         output[l] = function::sigmoid(output[l]);
-    //                     }
-
-    //                     output_nodes.push(output);
-    //                     // go to next layer
-    //                     layer += 1;
-    //                 }
-    //             }
-
-    //             {
-    //                 // output layer
-    //                 let output_layer_node = output_nodes.pop().unwrap();
-    //                 for k in 0..output {
-    //                     let error = item[input + k] - output_layer_node[k];
-    //                     errors.push(error);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    nn.forward_pass(&section, (input, hidden_layer, output));
 }

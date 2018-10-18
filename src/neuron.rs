@@ -21,8 +21,23 @@ impl Neuron {
                 weight_init.push(rng.gen_range(-weight_range, weight_range));
             }
         }
+
         Neuron {
             // bias as a part of weights
+            next: next,
+            weight: weight_init,
+        }
+    }
+
+    pub fn empty(next: usize) -> Self {
+        let cap = next + 1;
+        let mut weight_init = Vec::with_capacity(cap);
+
+        for i in 0..cap {
+            weight_init.push(0_f64);
+        }
+
+        Neuron {
             next: next,
             weight: weight_init,
         }

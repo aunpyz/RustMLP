@@ -33,7 +33,7 @@ fn main() {
     f = remove_line(f, 2);
 
     let hidden_layers = vec![3, 2];
-    cross_validation((8, hidden_layers, 1), f, 10);
+    cross_validation((8, hidden_layers, 1), f, 10, 10000);
 }
 
 fn print_split(split: std::str::SplitWhitespace) {
