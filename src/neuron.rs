@@ -1,9 +1,40 @@
 use super::rand::{self, thread_rng, Rng};
 
+use std::fmt;
+
 #[derive(Debug, Clone)]
 pub struct Neuron {
     pub next: usize,
     pub weight: Vec<f64>,
+}
+
+impl fmt::Display for Neuron {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut display = String::new();
+        display.push_str(&format!(
+            "-----*Neuron*-----\n\
+             Next: {}\n\
+             Bias: {}\n\
+             ",
+            self.next, self.weight[0]
+        ));
+        if self.weight.len() > 1 {
+            display.push_str(
+                "Weight to next nodes:\n\
+                 ",
+            );
+            for i in 1..self.weight.len() {
+                display.push_str(&format!("{}, ", self.weight[i]));
+            }
+            // remove ", "
+            display = display[0..display.len() - 2].to_string();
+        }
+        display.push_str(
+            "\n\
+             ------------------\n",
+        );
+        write!(f, "{}", display)
+    }
 }
 
 impl Neuron {

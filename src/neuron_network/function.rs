@@ -40,6 +40,7 @@ pub fn sigmoid(t: f64) -> f64 {
 
 pub fn d_sigmoid(t: f64) -> f64 {
     let exp = (-t).exp();
+    let exp = if_infinity(exp);
     exp / (exp + 1_f64).powi(2)
 }
 
@@ -65,6 +66,16 @@ pub fn split_section(data: MinMax, s: usize) -> Vec<Vec<Vec<f64>>> {
         }
     }
     split_data
+}
+
+fn if_infinity(value: f64) -> f64 {
+    use std::f64;
+
+    if value.is_infinite() {
+        f64::MAX
+    } else {
+        value
+    }
 }
 
 // (min, max) pair returned

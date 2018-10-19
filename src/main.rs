@@ -15,7 +15,7 @@ fn remove_line(mut f: BufReader<File>, n: u8) -> BufReader<File> {
 }
 
 fn main() {
-    const e: f64 = 1e-7;
+    const E: f64 = 1e-7;
 
     // text file is not available in version control
     let filename = "./data/Flood_dataset.txt";
@@ -34,8 +34,8 @@ fn main() {
 
     f = remove_line(f, 2);
 
-    let hidden_layers = vec![3, 2];
-    cross_validation((8, hidden_layers, 1), f, 10, 100, e);
+    let hidden_layers = vec![4, 3];
+    cross_validation((8, hidden_layers, 1), f, 10, 100, E);
 }
 
 fn print_split(split: std::str::SplitWhitespace) {

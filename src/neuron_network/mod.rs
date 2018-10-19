@@ -2,6 +2,7 @@
 use super::neuron::Neuron;
 use super::rand::{thread_rng, Rng};
 
+use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -14,6 +15,62 @@ pub struct NeuronNetwork {
     output: Vec<Neuron>,
     learning_rate: f64,
     momentum_rate: f64,
+}
+
+impl fmt::Display for NeuronNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut display = String::new();
+        display.push_str(&format!(
+            "Neuron Network\n\
+             Learning rate: {}, Momentum rate: {}\n\
+             Input: {}\n\
+             ",
+            self.learning_rate,
+            self.momentum_rate,
+            self.input.len()
+        ));
+        for i in 0..self.input.len() {
+            display.push_str(&format!(
+                "{}\n\
+                 ",
+                self.input[i].to_string()
+            ));
+        }
+        display.push_str(&format!(
+            "Hidden layer: {}\n\
+             ",
+            self.hidden_layer.len()
+        ));
+        for i in 0..self.hidden_layer.len() {
+            display.push_str(&format!(
+                "\t{}\n\
+                 ",
+                i + 1
+            ));
+            for j in 0..self.hidden_layer[i].len() {
+                display.push_str(&format!(
+                    "{}\n\
+                     ",
+                    self.hidden_layer[i][j].to_string()
+                ));
+            }
+        }
+        display.push_str(&format!(
+            "Output: {}\n\
+             ",
+            self.output.len()
+        ));
+        for i in 0..self.output.len() {
+            display.push_str(&format!(
+                "{}
+                ",
+                self.output[i].to_string()
+            ));
+        }
+        // remove newline
+        display = display[0..display.len() - 1].to_string();
+        write!(f, "{}", display)
+    }
 }
 
 impl NeuronNetwork {
@@ -336,6 +393,7 @@ pub fn cross_validation(
     // normalized_data will no longer available
     let n = section.len();
     for i in 0..n {
+        println!("{}", nn);
         let mut prev_nn = NeuronNetwork::empty(input, hidden_layer.clone(), output);
         for iter in 0..epoch {
             let mut error: f64 = 1_f64;
@@ -355,11 +413,13 @@ pub fn cross_validation(
                         item[0..input].to_vec(),
                     );
                     let sum_sqrt_err = function::sum_sqrt_err(errors);
-                    println!("Neuron Network : {:?}", nn);
-                    println!("Sum square error : {}", sum_sqrt_err);
+                    // println!("{}", nn);
+                    // println!("Sum square error : {}", sum_sqrt_err);
                     error = sum_sqrt_err;
                 }
             }
+            // println!("{}", nn);
+            println!("Sum square error: {}", error);
             if error <= stop_treshhold {
                 println!("stop at : {}", iter);
                 break;
