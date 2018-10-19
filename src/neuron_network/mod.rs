@@ -232,13 +232,15 @@ impl NeuronNetwork {
                 // hidden layer
                 for j in 0..output.len() {
                     let mut sum_gradient: f64 = 0_f64;
+                    let hidden_level = self.hidden_layer.len() - i;
                     for k in 0..gradients[i - 1].len() {
-                        sum_gradient += gradients[i - 1][k];
+                        sum_gradient +=
+                            gradients[i - 1][k] * self.hidden_layer[hidden_level][j].weight[k + 1];
                     }
                     let g = function::d_sigmoid(output[j]) * sum_gradient;
                     assert!(
                         g.is_finite(),
-                        "output {} : {},
+                        "output {} : {}\n\\,
                         sum_gradient : {}",
                         j,
                         output[j],
@@ -264,12 +266,12 @@ impl NeuronNetwork {
                         + self.learning_rate * gradients[layer][i] * 1_f64;
                     assert!(
                         d.is_finite(),
-                        "output weight : {}, 
-                    t-1 output weight : {}, 
-                    learning rate : {}, 
-                    gradients : {}, 
-                    momentum rate : {}, 
-                    input : {}",
+                        "output weight : {}\n\\, 
+                        t-1 output weight : {}\n\\, 
+                        learning rate : {}\n\\, 
+                        gradients : {}\n\\, 
+                        momentum rate : {}\n\\, 
+                        input : {}",
                         bias,
                         prev_neuron_netowrk.hidden_layer[0][i].weight[0],
                         self.learning_rate,
@@ -287,12 +289,12 @@ impl NeuronNetwork {
                             + self.learning_rate * gradients[layer][i] * input[j];
                         assert!(
                             d.is_finite(),
-                            "output weight : {},
-                         t-1 output weight : {}, 
-                         learning rate : {}, 
-                         gradients : {}, 
-                         momentum rate : {}, 
-                         input : {}",
+                            "output weight : {}\n\\,
+                            t-1 output weight : {}\n\\, 
+                            learning rate : {}\n\\, 
+                            gradients : {}\n\\, 
+                            momentum rate : {}\n\\, 
+                            input : {}",
                             weight,
                             prev_neuron_netowrk.input[j].weight[i + 1],
                             self.learning_rate,
@@ -361,7 +363,9 @@ impl NeuronNetwork {
                 }
             }
         }
-
+        if prev_nn.input[0].weight[0] <= 0_f64 {
+            assert!(false, "{}\n{}", prev_neuron_netowrk, prev_nn);
+        }
         // send previous NeuronNetwork back
         prev_nn
     }
@@ -374,8 +378,6 @@ pub fn cross_validation(
     epoch: usize,
     stop_treshhold: f64,
 ) {
-    let mut nn = NeuronNetwork::new(input, hidden_layer.clone(), output);
-
     let mut input_data = Vec::<Vec<f64>>::new();
     let mut all_data = Vec::<f64>::new();
     for line in file.lines() {
@@ -392,9 +394,11 @@ pub fn cross_validation(
     let section = function::split_section(normalized_data, validate_section);
     // normalized_data will no longer available
     let n = section.len();
+
     for i in 0..n {
-        println!("{}", nn);
+        let mut nn = NeuronNetwork::new(input, hidden_layer.clone(), output);
         let mut prev_nn = NeuronNetwork::empty(input, hidden_layer.clone(), output);
+        println!("{}", nn);
         for iter in 0..epoch {
             let mut error: f64 = 1_f64;
             for j in 0..n {
@@ -403,7 +407,7 @@ pub fn cross_validation(
                     continue;
                 }
                 let data = &section[j];
-                for (_index, item) in data.iter().enumerate() {
+                for item in data.iter() {
                     let (output_nodes, errors) =
                         nn.forward_pass(item, (input, hidden_layer.len(), output));
                     prev_nn = nn.backward_pass(
@@ -413,16 +417,37 @@ pub fn cross_validation(
                         item[0..input].to_vec(),
                     );
                     let sum_sqrt_err = function::sum_sqrt_err(errors);
-                    // println!("{}", nn);
-                    // println!("Sum square error : {}", sum_sqrt_err);
                     error = sum_sqrt_err;
                 }
             }
-            // println!("{}", nn);
             println!("Sum square error: {}", error);
             if error <= stop_treshhold {
                 println!("stop at : {}", iter);
                 break;
+            }
+        }
+        let data = &section[i];
+        for item in data.iter() {
+            let (mut output, errors) = nn.forward_pass(item, (input, hidden_layer.len(), output));
+            let output = {
+                let output_v = output.pop().unwrap();
+                let mut output_y: Vec<f64> = Vec::with_capacity(output_v.len());
+                for item in output_v.iter() {
+                    output_y.push(function::sigmoid(*item));
+                }
+                function::denormalize(output_y, (min, max))
+            };
+            assert_eq!(output.len(), errors.len());
+            for i in 0..output.len() {
+                let desire_output = item[input + i] * (max - min) + min;
+                println!(
+                    "desired output : {}\n\
+                     output : {}\n\
+                     error : {}",
+                    desire_output,
+                    output[i],
+                    desire_output - output[i]
+                );
             }
         }
     }

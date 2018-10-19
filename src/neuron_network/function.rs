@@ -34,6 +34,14 @@ pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
     }
 }
 
+pub fn denormalize(mut all_data: Vec<f64>, (min, max): (f64, f64)) -> Vec<f64> {
+    let multiplier = max - min;
+    for i in 0..all_data.len() {
+        all_data[i] = all_data[i] * multiplier + min;
+    }
+    all_data
+}
+
 pub fn sigmoid(t: f64) -> f64 {
     1_f64 / (1_f64 + (-t).exp())
 }
