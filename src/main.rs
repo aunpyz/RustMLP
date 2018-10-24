@@ -1,6 +1,7 @@
 extern crate mlp;
 
-use mlp::neuron_network::*;
+use mlp::data_ops;
+use mlp::neural_network::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -34,8 +35,28 @@ fn main() {
 
     f = remove_line(f, 2);
 
+    let mut input_data = Vec::<Vec<f64>>::new();
+    let mut all_data = Vec::<f64>::new();
+    for line in f.lines() {
+        let line = line.unwrap();
+        let split = line.split_whitespace().collect::<Vec<&str>>();
+        let mut vec = data_ops::to_f64_vec(split);
+        // vec clone will be consumed after push
+        input_data.push(vec.clone());
+        all_data.append(&mut vec);
+    }
+    let normalized_data = data_ops::normalize(all_data, input_data);
+
     let hidden_layers = vec![4, 3];
-    cross_validation((8, hidden_layers, 1), f, 10, 100, E);
+    cross_validation(
+        (8, hidden_layers, 1),
+        normalized_data,
+        10,
+        500,
+        E,
+        String::from("flood_cross.txt"),
+        true,
+    );
 }
 
 fn print_split(split: std::str::SplitWhitespace) {

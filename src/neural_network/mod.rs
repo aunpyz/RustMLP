@@ -1,15 +1,20 @@
 // fully connected neuron network
 use super::neuron::Neuron;
 use super::rand::{thread_rng, Rng};
+use data_ops::denormalize;
+use MinMax;
 
+use std::error::Error;
 use std::fmt;
 use std::fs::File;
+use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 mod function;
 
 #[derive(Debug, Clone)]
-pub struct NeuronNetwork {
+pub struct NeuralNetwork {
     input: Vec<Neuron>,
     hidden_layer: Vec<Vec<Neuron>>,
     output: Vec<Neuron>,
@@ -17,63 +22,38 @@ pub struct NeuronNetwork {
     momentum_rate: f64,
 }
 
-impl fmt::Display for NeuronNetwork {
+impl fmt::Display for NeuralNetwork {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut display = String::new();
         display.push_str(&format!(
             "Neuron Network\n\
              Learning rate: {}, Momentum rate: {}\n\
-             Input: {}\n\
-             ",
+             Input: {}\n",
             self.learning_rate,
             self.momentum_rate,
             self.input.len()
         ));
         for i in 0..self.input.len() {
-            display.push_str(&format!(
-                "{}\n\
-                 ",
-                self.input[i].to_string()
-            ));
+            display.push_str(&format!("{}\n", self.input[i].to_string()));
         }
-        display.push_str(&format!(
-            "Hidden layer: {}\n\
-             ",
-            self.hidden_layer.len()
-        ));
+        display.push_str(&format!("Hidden layer: {}\n", self.hidden_layer.len()));
         for i in 0..self.hidden_layer.len() {
-            display.push_str(&format!(
-                "\t{}\n\
-                 ",
-                i + 1
-            ));
+            display.push_str(&format!("{}\n", i + 1));
             for j in 0..self.hidden_layer[i].len() {
-                display.push_str(&format!(
-                    "{}\n\
-                     ",
-                    self.hidden_layer[i][j].to_string()
-                ));
+                display.push_str(&format!("{}\n", self.hidden_layer[i][j].to_string()));
             }
         }
-        display.push_str(&format!(
-            "Output: {}\n\
-             ",
-            self.output.len()
-        ));
+        display.push_str(&format!("Output: {}\n", self.output.len()));
         for i in 0..self.output.len() {
-            display.push_str(&format!(
-                "{}
-                ",
-                self.output[i].to_string()
-            ));
+            display.push_str(&format!("{}\n", self.output[i].to_string()));
         }
         // remove newline
-        display = display[0..display.len() - 1].to_string();
+        display = display[0..display.len() - 2].to_string();
         write!(f, "{}", display)
     }
 }
 
-impl NeuronNetwork {
+impl NeuralNetwork {
     // input is number of input(s)
     // hidden_layer is number of neurons in each hidden layer
     // output is number of output(s)
@@ -102,7 +82,7 @@ impl NeuronNetwork {
             output_neuron.push(Neuron::new(0));
         }
 
-        NeuronNetwork {
+        NeuralNetwork {
             input: input_neuron,
             hidden_layer: hidden_layer_neuron,
             output: output_neuron,
@@ -133,7 +113,7 @@ impl NeuronNetwork {
             output_neuron.push(Neuron::empty(0));
         }
 
-        NeuronNetwork {
+        NeuralNetwork {
             input: input_neuron,
             hidden_layer: hidden_layer_neuron,
             output: output_neuron,
@@ -216,7 +196,7 @@ impl NeuronNetwork {
         &mut self,
         output_nodes: Vec<Vec<f64>>,
         errors: Vec<f64>,
-        prev_neuron_netowrk: NeuronNetwork,
+        prev_neuron_netowrk: NeuralNetwork,
         input: Vec<f64>,
     ) -> Self {
         let prev_nn = self.clone();
@@ -240,8 +220,8 @@ impl NeuronNetwork {
                     let g = function::d_sigmoid(output[j]) * sum_gradient;
                     assert!(
                         g.is_finite(),
-                        "output {} : {}\n\\,
-                        sum_gradient : {}",
+                        "output {} : {},\n\
+                         sum_gradient : {}",
                         j,
                         output[j],
                         sum_gradient
@@ -266,12 +246,12 @@ impl NeuronNetwork {
                         + self.learning_rate * gradients[layer][i] * 1_f64;
                     assert!(
                         d.is_finite(),
-                        "output weight : {}\n\\, 
-                        t-1 output weight : {}\n\\, 
-                        learning rate : {}\n\\, 
-                        gradients : {}\n\\, 
-                        momentum rate : {}\n\\, 
-                        input : {}",
+                        "output weight : {},\n\
+                         t-1 output weight : {},\n\
+                         learning rate : {},\n\
+                         gradients : {},\n\
+                         momentum rate : {},\n\
+                         input : {}",
                         bias,
                         prev_neuron_netowrk.hidden_layer[0][i].weight[0],
                         self.learning_rate,
@@ -289,12 +269,12 @@ impl NeuronNetwork {
                             + self.learning_rate * gradients[layer][i] * input[j];
                         assert!(
                             d.is_finite(),
-                            "output weight : {}\n\\,
-                            t-1 output weight : {}\n\\, 
-                            learning rate : {}\n\\, 
-                            gradients : {}\n\\, 
-                            momentum rate : {}\n\\, 
-                            input : {}",
+                            "output weight : {},\n\
+                             t-1 output weight : {},\n\
+                             learning rate : {},\n\
+                             gradients : {},\n\
+                             momentum rate : {},\n\
+                             input : {}",
                             weight,
                             prev_neuron_netowrk.input[j].weight[i + 1],
                             self.learning_rate,
@@ -366,29 +346,29 @@ impl NeuronNetwork {
         if prev_nn.input[0].weight[0] <= 0_f64 {
             assert!(false, "{}\n{}", prev_neuron_netowrk, prev_nn);
         }
-        // send previous NeuronNetwork back
+        // send previous NeuralNetwork back
         prev_nn
     }
 }
 
 pub fn cross_validation(
     (input, hidden_layer, output): (usize, Vec<usize>, usize),
-    file: BufReader<File>,
+    normalized_data: MinMax,
     validate_section: usize,
     epoch: usize,
     stop_treshhold: f64,
+    out: String,
+    need_denormalized: bool,
 ) {
-    let mut input_data = Vec::<Vec<f64>>::new();
-    let mut all_data = Vec::<f64>::new();
-    for line in file.lines() {
-        let line = line.unwrap();
-        let split = line.split_whitespace().collect::<Vec<&str>>();
-        let mut vec = function::to_f64_vec(split);
-        // vec clone will be consumed after push
-        input_data.push(vec.clone());
-        all_data.append(&mut vec);
-    }
-    let normalized_data = function::normalize(all_data, input_data);
+    let path = format!("./out/{}", out);
+    let path = Path::new(&path);
+    let display = path.display();
+
+    let mut f = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+        Ok(f) => f,
+    };
+
     let (min, max) = (normalized_data.min, normalized_data.max);
 
     let section = function::split_section(normalized_data, validate_section);
@@ -396,9 +376,12 @@ pub fn cross_validation(
     let n = section.len();
 
     for i in 0..n {
-        let mut nn = NeuronNetwork::new(input, hidden_layer.clone(), output);
-        let mut prev_nn = NeuronNetwork::empty(input, hidden_layer.clone(), output);
-        println!("{}", nn);
+        let mut nn = NeuralNetwork::new(input, hidden_layer.clone(), output);
+        let mut prev_nn = NeuralNetwork::empty(input, hidden_layer.clone(), output);
+        if let Err(why) = f.write_all(format!("============================================================================================\n\
+            BEFORE\n{}\n", nn).as_bytes()){
+            panic!("couldn't write to {}: {}", display, why.description());
+        }
         for iter in 0..epoch {
             let mut error: f64 = 1_f64;
             for j in 0..n {
@@ -420,13 +403,23 @@ pub fn cross_validation(
                     error = sum_sqrt_err;
                 }
             }
-            println!("Sum square error: {}", error);
+            if let Err(why) = f.write_all(format!("Sum square error: {}\n", error).as_bytes()) {
+                panic!("couldn't write to {}: {}", display, why.description());
+            }
             if error <= stop_treshhold {
-                println!("stop at : {}", iter);
+                if let Err(why) = f.write_all(format!("stop at : {}\n", iter).as_bytes()) {
+                    panic!("couldn't write to {}: {}", display, why.description());
+                }
                 break;
             }
         }
         let data = &section[i];
+
+        if let Err(why) = f.write_all(format!("============================================================================================\n\
+            RESULT").as_bytes()){
+            panic!("couldn't write to {}: {}", display, why.description());
+        }
+
         for item in data.iter() {
             let (mut output, errors) = nn.forward_pass(item, (input, hidden_layer.len(), output));
             let output = {
@@ -435,20 +428,38 @@ pub fn cross_validation(
                 for item in output_v.iter() {
                     output_y.push(function::sigmoid(*item));
                 }
-                function::denormalize(output_y, (min, max))
+
+                if need_denormalized {
+                    denormalize(output_y, (min, max))
+                } else {
+                    output_y
+                }
             };
             assert_eq!(output.len(), errors.len());
+            if let Err(why) = f.write_all(
+                format!("\nSum square error : {}\n", function::sum_sqrt_err(errors)).as_bytes(),
+            ) {
+                panic!("couldn't write to {}: {}", display, why.description());
+            }
             for i in 0..output.len() {
                 let desire_output = item[input + i] * (max - min) + min;
-                println!(
-                    "desired output : {}\n\
-                     output : {}\n\
-                     error : {}",
-                    desire_output,
-                    output[i],
-                    desire_output - output[i]
-                );
+                if let Err(why) = f.write_all(
+                    format!(
+                        "desired output : {}\n\
+                         output : {}\n\
+                         error : {}\n",
+                        desire_output,
+                        output[i],
+                        desire_output - output[i]
+                    ).as_bytes(),
+                ) {
+                    panic!("couldn't write to {}: {}", display, why.description());
+                }
             }
+        }
+        if let Err(why) = f.write_all(format!("============================================================================================\n\
+            AFTER\n{}\n\n\n", nn).as_bytes()) {
+            panic!("couldn't write to {}: {}", display, why.description());
         }
     }
 }

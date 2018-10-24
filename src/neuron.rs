@@ -14,25 +14,18 @@ impl fmt::Display for Neuron {
         display.push_str(&format!(
             "-----*Neuron*-----\n\
              Next: {}\n\
-             Bias: {}\n\
-             ",
+             Bias: {}\n",
             self.next, self.weight[0]
         ));
         if self.weight.len() > 1 {
-            display.push_str(
-                "Weight to next nodes:\n\
-                 ",
-            );
+            display.push_str("Weight to next nodes:\n");
             for i in 1..self.weight.len() {
                 display.push_str(&format!("{}, ", self.weight[i]));
             }
             // remove ", "
             display = display[0..display.len() - 2].to_string();
         }
-        display.push_str(
-            "\n\
-             ------------------\n",
-        );
+        display.push_str("\n------------------\n");
         write!(f, "{}", display)
     }
 }
@@ -64,7 +57,7 @@ impl Neuron {
         let cap = next + 1;
         let mut weight_init = Vec::with_capacity(cap);
 
-        for i in 0..cap {
+        for _i in 0..cap {
             weight_init.push(0_f64);
         }
 
