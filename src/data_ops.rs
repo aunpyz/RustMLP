@@ -1,5 +1,78 @@
 use rand::{self, Rng};
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufReader;
 use MinMax;
+
+pub fn remove_line(
+    f: BufReader<File>,
+    n: u8,
+    recursion: bool,
+    step: u8,
+    line_per_data: u8,
+) -> (Vec<Vec<f64>>, Vec<f64>) {
+    let mut input_data = Vec::<Vec<f64>>::new();
+    let mut all_data = Vec::<f64>::new();
+    if recursion {
+        let mut line_removed = 0;
+        let mut line_read = 0;
+        let mut line_data = 0;
+        let mut input_vec = Vec::<f64>::new();
+        for line in f.lines() {
+            // if #step line(s) read, fall through line_removed, continue
+            if line_read >= step {
+                line_removed = 0;
+                line_read = 0;
+            }
+            if line_removed < n {
+                line_removed += 1;
+                continue;
+            }
+            let line = line.unwrap();
+            let split = line.split_whitespace().collect::<Vec<&str>>();
+            let mut vec = to_f64_vec(split);
+            // vec clone will be consumed after push
+            input_vec.append(&mut vec.clone());
+            all_data.append(&mut vec);
+            line_read += 1;
+            line_data += 1;
+
+            if line_data >= line_per_data {
+                input_data.push(input_vec.clone());
+                input_vec.clear();
+                line_data = 0;
+            }
+        }
+    } else {
+        let mut line_removed = 0;
+        let mut line_data = 0;
+        let mut input_vec = Vec::<f64>::new();
+        for line in f.lines() {
+            if line_removed < n {
+                line_removed += 1;
+                continue;
+            }
+            let line = line.unwrap();
+            let split = line.split_whitespace().collect::<Vec<&str>>();
+            let mut vec = to_f64_vec(split);
+            input_vec.append(&mut vec.clone());
+            all_data.append(&mut vec);
+            line_data += 1;
+
+            if line_data >= line_per_data {
+                input_data.push(input_vec.clone());
+                input_vec.clear();
+                line_data = 0;
+            }
+        }
+    }
+    (input_data, all_data)
+}
+
+pub fn shuffle(mut data: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    rand::thread_rng().shuffle(&mut data);
+    data
+}
 
 pub fn to_f64_vec(vec: Vec<&str>) -> Vec<f64> {
     let mut f64_vec: Vec<f64> = Vec::new();
@@ -21,11 +94,7 @@ pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
     }
     // shuffle data
     rand::thread_rng().shuffle(&mut f_data_normalized);
-    MinMax {
-        f_data: f_data_normalized,
-        min: min_max.0,
-        max: min_max.1,
-    }
+    MinMax::new(f_data_normalized, Some(min_max))
 }
 
 pub fn denormalize(mut all_data: Vec<f64>, (min, max): (f64, f64)) -> Vec<f64> {

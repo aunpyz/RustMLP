@@ -8,7 +8,6 @@ use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 mod function;

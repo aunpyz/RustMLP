@@ -1,4 +1,4 @@
-use super::rand::{self, thread_rng, Rng};
+use super::rand::{thread_rng, Rng};
 
 use std::fmt;
 
