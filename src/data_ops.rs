@@ -1,8 +1,64 @@
+use MinMax;
+
 use rand::{self, Rng};
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use MinMax;
+use std::path::Path;
+
+// not flexible fn at all
+pub fn confusion_matrix(
+    (out, desire_output): (Vec<Vec<Vec<f64>>>, Vec<Vec<Vec<f64>>>),
+    out_filename: String,
+) {
+    // only works for 2 outputs
+    assert_eq!(out[0][0].len(), 2);
+
+    let path = format!("./out/{}", out_filename);
+    let path = Path::new(&path);
+    let display = path.display();
+
+    let mut matrix: Vec<Vec<usize>> = vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]];
+    let mut f = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+        Ok(f) => f,
+    };
+
+    for i in 0..out.len() {
+        for j in 0..out[i].len() {
+            let row = if out[i][j][0] > out[i][j][1] {
+                0
+            } else if out[i][j][0] < out[i][j][1] {
+                1
+            } else {
+                2
+            };
+            let col = if desire_output[i][j][0] > desire_output[i][j][1] {
+                0
+            } else if desire_output[i][j][0] < desire_output[i][j][1] {
+                1
+            } else {
+                2
+            };
+
+            matrix[row][col] += 1;
+        }
+        if let Err(why) = f.write_all(format!(
+            "\
+            output\\expected output\t|\tclass 1\t|\tclass 2\t|\tundefined\n\
+            class 1\t\t\t\t\t|\t{}\t\t|\t{}\t\t|\t{}\n\
+            class 2\t\t\t\t\t|\t{}\t\t|\t{}\t\t|\t{}\n\
+            undefined\t\t\t\t|\t{}\t\t|\t{}\t\t|\t{}\n\
+            ============================================================================================\n",
+            matrix[0][0], matrix[0][1], matrix[0][2],
+            matrix[1][0], matrix[1][1], matrix[1][2],
+            matrix[2][0], matrix[2][1], matrix[2][2]).as_bytes()){
+            panic!("couldn't write to {}: {}", display, why.description());
+        }
+        matrix = vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]];
+    }
+}
 
 pub fn remove_line(
     f: BufReader<File>,

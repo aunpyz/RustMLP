@@ -358,10 +358,13 @@ pub fn cross_validation(
     stop_treshhold: f64,
     out: String,
     need_denormalized: bool,
-) {
+) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<Vec<f64>>>) {
     let path = format!("./out/{}", out);
     let path = Path::new(&path);
     let display = path.display();
+
+    let mut out: Vec<Vec<Vec<f64>>> = Vec::new();
+    let mut d_out: Vec<Vec<Vec<f64>>> = Vec::new();
 
     let mut f = match File::create(&path) {
         Err(why) => panic!("couldn't create {}: {}", display, why.description()),
@@ -381,8 +384,9 @@ pub fn cross_validation(
             BEFORE\n{}\n", nn).as_bytes()){
             panic!("couldn't write to {}: {}", display, why.description());
         }
+        let mut t = 0_f64;
         for iter in 0..epoch {
-            let mut error: f64 = 1_f64;
+            let mut error: f64 = 0_f64;
             for j in 0..n {
                 // ignore index i
                 if j == i {
@@ -399,13 +403,16 @@ pub fn cross_validation(
                         item[0..input].to_vec(),
                     );
                     let sum_sqrt_err = function::sum_sqrt_err(errors);
-                    error = sum_sqrt_err;
+                    error += sum_sqrt_err;
+                    t += 1_f64;
                 }
             }
-            if let Err(why) = f.write_all(format!("Sum square error: {}\n", error).as_bytes()) {
+            if let Err(why) =
+                f.write_all(format!("Averaged sum square error: {}\n", error / t).as_bytes())
+            {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
-            if error <= stop_treshhold {
+            if error / t <= stop_treshhold {
                 if let Err(why) = f.write_all(format!("stop at : {}\n", iter).as_bytes()) {
                     panic!("couldn't write to {}: {}", display, why.description());
                 }
@@ -413,6 +420,8 @@ pub fn cross_validation(
             }
         }
         let data = &section[i];
+        let mut tmp_out: Vec<Vec<f64>> = Vec::new();
+        let mut tmp_d_out: Vec<Vec<f64>> = Vec::new();
 
         if let Err(why) = f.write_all(format!("============================================================================================\n\
             RESULT").as_bytes()){
@@ -440,8 +449,11 @@ pub fn cross_validation(
             ) {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
+
+            let mut d: Vec<f64> = Vec::new();
             for i in 0..output.len() {
                 let desire_output = item[input + i] * (max - min) + min;
+                d.push(desire_output);
                 if let Err(why) = f.write_all(
                     format!(
                         "desired output : {}\n\
@@ -449,16 +461,24 @@ pub fn cross_validation(
                          error : {}\n",
                         desire_output,
                         output[i],
-                        desire_output - output[i]
+                        (desire_output - output[i]).abs()
                     ).as_bytes(),
                 ) {
                     panic!("couldn't write to {}: {}", display, why.description());
                 }
             }
+
+            tmp_d_out.push(d);
+            tmp_out.push(output);
         }
+        d_out.push(tmp_d_out);
+        out.push(tmp_out);
+
         if let Err(why) = f.write_all(format!("============================================================================================\n\
             AFTER\n{}\n\n\n", nn).as_bytes()) {
             panic!("couldn't write to {}: {}", display, why.description());
         }
     }
+    // for classification
+    (out, d_out)
 }

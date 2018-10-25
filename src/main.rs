@@ -45,7 +45,7 @@ fn main() {
 
         let normalized_data = mlp::MinMax::new(input_data, None);
         let hidden_layers = vec![4, 3];
-        cross_validation(
+        let (output, desire_output) = cross_validation(
             (2, hidden_layers, 2),
             normalized_data,
             10,
@@ -53,6 +53,12 @@ fn main() {
             E,
             String::from("cross_cross.txt"),
             false,
+        );
+        assert_eq!(output.len(), desire_output.len());
+        println!("Write confusion matrix file...");
+        data_ops::confusion_matrix(
+            (output, desire_output),
+            String::from("cross_confusion_matrix.txt"),
         );
         println!("{} Done", filename);
     }
