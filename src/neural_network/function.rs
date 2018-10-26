@@ -10,7 +10,7 @@ pub fn d_sigmoid(t: f64) -> f64 {
     exp / (exp + 1_f64).powi(2)
 }
 
-pub fn sum_sqrt_err(error_vec: Vec<f64>) -> f64 {
+pub fn mean_sqrt_err(error_vec: Vec<f64>) -> f64 {
     let mut sse: f64 = 0 as f64;
     for (_i, item) in error_vec.iter().enumerate() {
         sse += item.powi(2);

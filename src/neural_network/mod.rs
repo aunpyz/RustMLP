@@ -373,12 +373,15 @@ pub fn cross_validation(
 
     let (min, max) = (normalized_data.min, normalized_data.max);
 
+    let total_data: f64 = normalized_data.f_data.len() as f64;
     let section = function::split_section(normalized_data, validate_section);
     // normalized_data will no longer available
     let n = section.len();
+    let master_nn = NeuralNetwork::new(input, hidden_layer.clone(), output);
+    let mut n_error: f64 = 0_f64;
 
     for i in 0..n {
-        let mut nn = NeuralNetwork::new(input, hidden_layer.clone(), output);
+        let mut nn = master_nn.clone();
         let mut prev_nn = NeuralNetwork::empty(input, hidden_layer.clone(), output);
         if let Err(why) = f.write_all(format!("============================================================================================\n\
             BEFORE\n{}\n", nn).as_bytes()){
@@ -402,13 +405,13 @@ pub fn cross_validation(
                         prev_nn,
                         item[0..input].to_vec(),
                     );
-                    let sum_sqrt_err = function::sum_sqrt_err(errors);
-                    error += sum_sqrt_err;
+                    let mean_sqrt_err = function::mean_sqrt_err(errors);
+                    error += mean_sqrt_err;
                     t += 1_f64;
                 }
             }
             if let Err(why) =
-                f.write_all(format!("Averaged sum square error: {}\n", error / t).as_bytes())
+                f.write_all(format!("Averaged mean square error: {}\n", error / t).as_bytes())
             {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
@@ -444,9 +447,11 @@ pub fn cross_validation(
                 }
             };
             assert_eq!(output.len(), errors.len());
-            if let Err(why) = f.write_all(
-                format!("\nSum square error : {}\n", function::sum_sqrt_err(errors)).as_bytes(),
-            ) {
+            let mean_sqrt_err = function::mean_sqrt_err(errors);
+            n_error += mean_sqrt_err;
+            if let Err(why) =
+                f.write_all(format!("\nMean square error : {}\n", mean_sqrt_err).as_bytes())
+            {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
 
@@ -471,6 +476,7 @@ pub fn cross_validation(
             tmp_d_out.push(d);
             tmp_out.push(output);
         }
+
         d_out.push(tmp_d_out);
         out.push(tmp_out);
 
@@ -479,6 +485,12 @@ pub fn cross_validation(
             panic!("couldn't write to {}: {}", display, why.description());
         }
     }
+    if let Err(why) =
+        f.write_all(format!("\nAVERAGED MEAN SQUARE ERROR: {}\n", n_error / total_data).as_bytes())
+    {
+        panic!("couldn't write to {}: {}", display, why.description());
+    }
+
     // for classification
     (out, d_out)
 }
