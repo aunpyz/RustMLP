@@ -388,8 +388,8 @@ pub fn cross_validation(
             panic!("couldn't write to {}: {}", display, why.description());
         }
         let mut t = 0_f64;
+        let mut error: f64 = 0_f64;
         for iter in 0..epoch {
-            let mut error: f64 = 0_f64;
             for j in 0..n {
                 // ignore index i
                 if j == i {
