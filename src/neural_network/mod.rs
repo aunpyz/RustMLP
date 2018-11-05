@@ -383,7 +383,8 @@ pub fn cross_validation(
     for i in 0..n {
         let mut nn = master_nn.clone();
         let mut prev_nn = NeuralNetwork::empty(input, hidden_layer.clone(), output);
-        if let Err(why) = f.write_all(format!("============================================================================================\n\
+        if let Err(why) = f.write_all(format!("\
+            ============================================================================================\n\
             BEFORE\n{}\n", nn).as_bytes()){
             panic!("couldn't write to {}: {}", display, why.description());
         }
@@ -411,7 +412,7 @@ pub fn cross_validation(
                 }
             }
             if let Err(why) =
-                f.write_all(format!("Averaged mean square error: {}\n", error / t).as_bytes())
+                f.write_all(format!("Average mean squared error: {}\n", error / t).as_bytes())
             {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
@@ -426,11 +427,13 @@ pub fn cross_validation(
         let mut tmp_out: Vec<Vec<f64>> = Vec::new();
         let mut tmp_d_out: Vec<Vec<f64>> = Vec::new();
 
-        if let Err(why) = f.write_all(format!("============================================================================================\n\
+        if let Err(why) = f.write_all(format!("\
+            ============================================================================================\n\
             RESULT").as_bytes()){
             panic!("couldn't write to {}: {}", display, why.description());
         }
 
+        let mut test_error: f64 = 0_f64; 
         for item in data.iter() {
             let (mut output, errors) = nn.forward_pass(item, (input, hidden_layer.len(), output));
             let output = {
@@ -448,9 +451,9 @@ pub fn cross_validation(
             };
             assert_eq!(output.len(), errors.len());
             let mean_sqrt_err = function::mean_sqrt_err(errors);
-            n_error += mean_sqrt_err;
+            test_error += mean_sqrt_err;
             if let Err(why) =
-                f.write_all(format!("\nMean square error : {}\n", mean_sqrt_err).as_bytes())
+                f.write_all(format!("\nMean squared error : {}\n", mean_sqrt_err).as_bytes())
             {
                 panic!("couldn't write to {}: {}", display, why.description());
             }
@@ -477,16 +480,19 @@ pub fn cross_validation(
             tmp_out.push(output);
         }
 
+        n_error += test_error;
         d_out.push(tmp_d_out);
         out.push(tmp_out);
 
-        if let Err(why) = f.write_all(format!("============================================================================================\n\
-            AFTER\n{}\n\n\n", nn).as_bytes()) {
+        if let Err(why) = f.write_all(format!("\n\
+            Average mean squared error: {}\n\
+            ============================================================================================\n\
+            AFTER\n{}\n\n\n", test_error/data.len() as f64, nn).as_bytes()) {
             panic!("couldn't write to {}: {}", display, why.description());
         }
     }
     if let Err(why) =
-        f.write_all(format!("\nAVERAGED MEAN SQUARE ERROR: {}\n", n_error / total_data).as_bytes())
+        f.write_all(format!("\nAVERAGE MEAN SQUARED ERROR: {}\n", n_error / total_data).as_bytes())
     {
         panic!("couldn't write to {}: {}", display, why.description());
     }
