@@ -7,11 +7,10 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 
+pub type Output = Vec<Vec<Vec<f64>>>;
+
 // not flexible fn at all
-pub fn confusion_matrix(
-    (out, desire_output): (Vec<Vec<Vec<f64>>>, Vec<Vec<Vec<f64>>>),
-    out_filename: String,
-) {
+pub fn confusion_matrix((out, desire_output): (Output, Output), out_filename: String) {
     // only works for 2 outputs
     assert_eq!(out[0][0].len(), 2);
 
@@ -162,9 +161,9 @@ pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
     let mut f_data_normalized = input_data;
     let divisor = min_max.1 - min_max.0;
     let min = min_max.0;
-    for i in 0..f_data_normalized.len() {
-        for j in 0..f_data_normalized[i].len() {
-            f_data_normalized[i][j] = (f_data_normalized[i][j] - min) / divisor;
+    for item_vec in &mut f_data_normalized {
+        for item in &mut *item_vec {
+            *item = (*item - min) / divisor;
         }
     }
     // shuffle data
@@ -174,8 +173,8 @@ pub fn normalize(all_data: Vec<f64>, input_data: Vec<Vec<f64>>) -> MinMax {
 
 pub fn denormalize(mut all_data: Vec<f64>, (min, max): (f64, f64)) -> Vec<f64> {
     let multiplier = max - min;
-    for i in 0..all_data.len() {
-        all_data[i] = all_data[i] * multiplier + min;
+    for item in &mut all_data {
+        *item = *item * multiplier + min;
     }
     all_data
 }

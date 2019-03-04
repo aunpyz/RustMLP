@@ -35,7 +35,7 @@ impl Neuron {
         let cap = next + 1;
         let mut weight_init = Vec::with_capacity(cap);
         // weight initialization range
-        let weight_range: f64 = 1.0_f64 / (if next > 0 { next as f64 } else { 1 as f64 }).sqrt();
+        let weight_range: f64 = 1.0_f64 / (if next > 0 { next as f64 } else { f64::from(1) }).sqrt();
         let mut rng = thread_rng();
         for i in 0..cap {
             // assigning weight
@@ -48,7 +48,7 @@ impl Neuron {
 
         Neuron {
             // bias as a part of weights
-            next: next,
+            next,
             weight: weight_init,
         }
     }
@@ -62,7 +62,7 @@ impl Neuron {
         }
 
         Neuron {
-            next: next,
+            next,
             weight: weight_init,
         }
     }

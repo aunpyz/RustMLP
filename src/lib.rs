@@ -15,8 +15,8 @@ impl MinMax {
     pub fn new(data: Vec<Vec<f64>>, min_max: Option<(f64, f64)>) -> Self {
         let (min, max) = min_max.unwrap_or((0_f64, 1_f64));
         MinMax {
-            min: min,
-            max: max,
+            min,
+            max,
             f_data: data,
         }
     }
